@@ -2,7 +2,7 @@
   "name": "debug-window-dump",
   "displayName": "debug_window_dump",
   "description": "This extension dumps the content of the VSCode Debug window",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "RolinBert",
   "repository": "https://github.com/RolinBert/debug-window-dump",
   "engines": {
@@ -11,7 +11,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -19,6 +21,18 @@
         "command": "debug-window-dump.dumpVariables",
         "title": "Dump Debug Variables"
       }
+    ],
+		"configuration": [
+			{
+				"title": "Debug Window Dump",
+				"properties": {
+					"debug-window-dump.maxHierarchies": {
+						"type": "number",
+						"default": 10,
+            "description": "Controls the maximum number of hierarchies that are dumped to the file."
+					}
+				}
+			}
     ]
   },
   "scripts": {

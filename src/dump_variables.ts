@@ -1,12 +1,5 @@
 import * as vscode from "vscode";
-import * as fs from "fs";
 import { DebugProtocol } from '@vscode/debugprotocol';
-
-type Dictionary = {
-    [x: string]: string | Object;
-};
-
-
 export class DebugSessionWatcher {
     dbgSession: vscode.DebugSession | undefined;
     frameId: number | undefined;
@@ -14,9 +7,7 @@ export class DebugSessionWatcher {
     requestedVariables: number[] = [];
     dump: Record<string, any> = {};
     promises: Promise<void>[] = [];
-    maxHierarchy : number = 10;
-    maxReqNr     : number = 1000;
-    curReqNr     : number = 0;
+    maxHierarchy: number = 10;
 
     setDbgSession(session: vscode.DebugSession) {
         if (session) {
@@ -35,22 +26,16 @@ export class DebugSessionWatcher {
         }
     }
 
-
     assignVariable(name: string, value: string, parent: Record<string, any>) {
         parent[name] = value;
     }
 
-    isContainerType(typeName: string) {
-        return (typeName === 'list' || typeName === 'array' || typeName === 'object' || typeName === 'dict');
-    }
-
-    async getVariables(variablesReference: number, parent: Record<string, any>, curHierarchy : number) {
+    async getVariables(variablesReference: number, parent: Record<string, any>, curHierarchy: number) {
         const response = await this.dbgSession?.customRequest('variables', { variablesReference: variablesReference }).then(result => result, () => ({ response: [] }));
         curHierarchy += 1;
         for (const entry of response.variables) {
             // If the variable has child members and this variable has not yet been visited => go visit it
-            if (entry.variablesReference !=0 && this.curReqNr < this.maxReqNr && curHierarchy < this.maxHierarchy) {
-                this.curReqNr += 1;
+            if (entry.variablesReference !== 0 && entry.type !== '' && curHierarchy < this.maxHierarchy) {
                 parent[entry.name] = {};
                 try {
                     await this.getVariables(entry.variablesReference, parent[entry.name], curHierarchy);
@@ -64,19 +49,19 @@ export class DebugSessionWatcher {
     }
 
     async getDebugVariables() {
-        const { scopes } = await this.dbgSession?.customRequest('scopes', { frameId: this.frameId }).then(result => result, () => ({ scopes: [] }));
         this.dump = {};
-        this.curReqNr = 0;
         let curHierarchy = 0;
+
+        this.maxHierarchy = vscode.workspace.getConfiguration("debug-window-dump").get("maxHierarchies", 10);
+        const { scopes } = await this.dbgSession?.customRequest('scopes', { frameId: this.frameId }).then(result => result, () => ({ scopes: [] }));
         for (const scope of scopes) {
             if (scope.name === 'Locals') {
                 const { variables } = await this.dbgSession?.customRequest('variables', {
                     variablesReference: scope.variablesReference,
                 }).then(result => result, () => ({ variables: [] }));
-                this.curReqNr += 1;
                 for (const entry of variables) {
                     // If the variable has child members and this variable has not yet been visited => go visit it
-                    if (entry.variablesReference !=0 && this.curReqNr < this.maxReqNr && curHierarchy < this.maxHierarchy ) {
+                    if (entry.variablesReference !== 0 && entry.type !== '' && curHierarchy < this.maxHierarchy) {
                         this.dump[entry.name] = {};
                         try {
                             await this.getVariables(entry.variablesReference, this.dump[entry.name], curHierarchy);
@@ -94,8 +79,10 @@ export class DebugSessionWatcher {
         }
         const targetUri = await vscode.window.showSaveDialog({
             filters: {
-                json: ["json"], 'All Files': ['*']}});
-        if(!targetUri){
+                json: ["json"], 'All Files': ['*']
+            }
+        });
+        if (!targetUri) {
             return;
         }
         const writeData = Buffer.from(JSON.stringify(this.dump), 'utf8');
