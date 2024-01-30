@@ -2,7 +2,7 @@
   "name": "debug-window-dump",
   "displayName": "debug_window_dump",
   "description": "This extension dumps the content of the VSCode Debug window",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "RolinBert",
   "repository": "https://github.com/RolinBert/debug-window-dump",
   "engines": {
